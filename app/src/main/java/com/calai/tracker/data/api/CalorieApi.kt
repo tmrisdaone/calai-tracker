@@ -1,8 +1,11 @@
 package com.calai.tracker.data.api
 
+import android.content.Context
+import android.util.Base64
 import com.calai.tracker.data.model.CalorieResponse
+import com.calai.tracker.data.inference.LocalInferenceEngine
+import com.calai.tracker.data.inference.CactusInferenceEngine
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.*
@@ -13,15 +16,16 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 class CalorieApi(
-    private var baseUrl: String = "https://api.openai.com/v1",
+    private var baseUrl: String = "http://localhost:11434/api",
     private var apiKey: String = "",
+    private var currentModel: String = "llama2",
 ) {
     private val client: OkHttpClient
     private val gson = Gson()
     private val jsonMedia = "application/json; charset=utf-8".toMediaType()
-    private val imageMedia = "image/jpeg".toMediaType()
+    private var localEngine: LocalInferenceEngine? = null
 
-    // System prompt telling the AI how to respond
+
     private val systemPrompt = """
         You are a precise food calorie analyzer. Given an image of food, identify what it is and estimate its nutritional content.
         Respond ONLY with valid JSON (no markdown, no code fences) in this exact format:
@@ -41,7 +45,7 @@ class CalorieApi(
 
     init {
         val logging = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+            level = HttpLoggingInterceptor.Level.BASIC
         }
         client = OkHttpClient.Builder()
             .addInterceptor(logging)
@@ -51,42 +55,62 @@ class CalorieApi(
             .build()
     }
 
-    fun updateConfig(baseUrl: String, apiKey: String) {
+    suspend fun updateConfig(baseUrl: String, apiKey: String, model: String = "llama2", context: Context? = null) {
         this.baseUrl = baseUrl.trimEnd('/')
         this.apiKey = apiKey
-    }
-
-    suspend fun analyzeFood(imageFile: File): CalorieResponse = withContext(Dispatchers.IO) {
-        val imageBytes = imageFile.readBytes()
-        val base64Image = android.util.Base64.encodeToString(imageBytes, android.util.Base64.NO_WRAP)
-
-        val requestBody = buildJsonBody(base64Image)
-        val request = Request.Builder()
-            .url("$baseUrl/chat/completions")
-            .header("Authorization", "Bearer $apiKey")
-            .header("Content-Type", "application/json")
-            .post(requestBody.toRequestBody(jsonMedia))
-            .build()
-
-        val response = client.newCall(request).execute()
-        val body = response.body?.string() ?: throw Exception("Empty response from API")
-
-        if (!response.isSuccessful) {
-            throw Exception("API error ${response.code}: ${body.take(200)}")
+        this.currentModel = model
+        if (context != null) {
+            this.localEngine = CactusInferenceEngine(context)
         }
-
-        parseResponse(body)
     }
 
-    private fun buildJsonBody(base64Image: String): String {
+    suspend fun analyzeFood(imageFile: File, localModelPath: String? = null): CalorieResponse = withContext(Dispatchers.IO) {
+        if (!localModelPath.isNullOrEmpty()) {
+            localEngine?.analyzeImage(imageFile, localModelPath) 
+                ?: throw Exception("Local engine not initialized")
+        } else {
+            val imageBytes = imageFile.readBytes()
+            val base64Image = Base64.encodeToString(imageBytes, Base64.NO_WRAP)
+
+            val mimeType = detectMimeType(imageFile.name)
+            val requestBody = buildJsonBody(base64Image, mimeType)
+            val request = Request.Builder()
+                .url("$baseUrl/chat/completions")
+                .header("Content-Type", "application/json")
+                .post(requestBody.toRequestBody(jsonMedia))
+                .build()
+
+            val response = client.newCall(request).execute()
+            val body = response.body?.string() ?: throw Exception("Empty response from API")
+
+            if (!response.isSuccessful) {
+                throw Exception("API error ${response.code}: ${body.take(200)}")
+            }
+
+            parseResponse(body)
+        }
+    }
+
+    private fun detectMimeType(fileName: String): String {
+        val name = fileName.lowercase()
+        return when {
+            name.endsWith(".png") -> "image/png"
+            name.endsWith(".webp") -> "image/webp"
+            name.endsWith(".gif") -> "image/gif"
+            name.endsWith(".heic") || name.endsWith(".heif") -> "image/heic"
+            else -> "image/jpeg"
+        }
+    }
+
+    private fun buildJsonBody(base64Image: String, mimeType: String): String {
         return gson.toJson(mapOf(
-            "model" to "gpt-4o-mini",
+            "model" to currentModel,
             "messages" to listOf(
                 mapOf("role" to "system", "content" to systemPrompt),
                 mapOf("role" to "user", "content" to listOf(
                     mapOf("type" to "text", "text" to "Analyze this food image and estimate its nutritional content."),
                     mapOf("type" to "image_url", "image_url" to mapOf(
-                        "url" to "data:image/jpeg;base64,$base64Image"
+                        "url" to "data:$mimeType;base64,$base64Image"
                     ))
                 ))
             ),
@@ -104,11 +128,9 @@ class CalorieApi(
                 ?.let { it["message"] as? Map<*, *> }
             val content = message?.let { message["content"] as? String } ?: throw Exception("No content in response")
 
-            // Parse the nested JSON from the AI response
             val cleaned = content.trim().removePrefix("```json").removePrefix("```").removeSuffix("```").trim()
             return gson.fromJson(cleaned, CalorieResponse::class.java)
         } catch (e: Exception) {
-            // Return raw text in a response so user can see what the AI said
             return CalorieResponse(
                 food_name = "Parse Error",
                 calories = 0.0,

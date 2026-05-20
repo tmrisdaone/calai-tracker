@@ -76,18 +76,26 @@ class CameraHelper(private val context: Context) {
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                     try {
                         val bitmap = BitmapFactory.decodeFile(photoFile.absolutePath)
+                        if (bitmap == null) {
+                            ContextCompat.getMainExecutor(context).execute { onSuccess(photoFile) }
+                            return
+                        }
                         val compressed = File(photoFile.parent, "compressed_${photoFile.name}")
                         FileOutputStream(compressed).use { out ->
                             bitmap.compress(Bitmap.CompressFormat.JPEG, 80, out)
                         }
+                        bitmap.recycle()
                         photoFile.delete()
-                        onSuccess(compressed)
+                        ContextCompat.getMainExecutor(context).execute { onSuccess(compressed) }
                     } catch (e: Exception) {
-                        onSuccess(photoFile)
+                        ContextCompat.getMainExecutor(context).execute { onSuccess(photoFile) }
                     }
                 }
+
                 override fun onError(exception: ImageCaptureException) {
-                    onError("Capture failed: ${exception.message}")
+                    ContextCompat.getMainExecutor(context).execute {
+                        onError("Capture failed: ${exception.message}")
+                    }
                 }
             }
         )

@@ -1,0 +1,5 @@
+/root/workspace/calai-tracker/app/src/main/cpp/cactus/build/CMakeFiles/cactus_i8mm_obj.dir
+/root/workspace/calai-tracker/app/src/main/cpp/cactus/build/CMakeFiles/cactus.dir
+/root/workspace/calai-tracker/app/src/main/cpp/cactus/build/CMakeFiles/cactus_ffi.dir
+/root/workspace/calai-tracker/app/src/main/cpp/cactus/build/CMakeFiles/edit_cache.dir
+/root/workspace/calai-tracker/app/src/main/cpp/cactus/build/CMakeFiles/rebuild_cache.dir
