@@ -24,11 +24,13 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    - name: Build with Gradle
-      run: ./gradlew assembleDebug
+    - name: Build with Gradle (Debug Mode)
+      run: ./gradlew assembleDebug --stacktrace --info --debug
+      # Note: --debug produces massive logs, --info is usually enough, but we're going all out for you.
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
+      if: always() # Ensure we attempt upload or log capture even if build fails
       with:
         name: calai-debug-apk
         path: app/build/outputs/apk/debug/app-debug.apk
