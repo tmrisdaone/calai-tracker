@@ -1,0 +1,41 @@
+name: Hyperframes Video Render
+on:
+  workflow_dispatch: # Allows manual trigger
+  push:
+    branches: [ main ]
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg libsm6 libxext6
+
+      - name: Install Python Dependencies
+        run: |
+          pip install --upgrade pip
+          # Installing hyperframes and common render deps
+          pip install hyperframes manim moviepy 
+
+      - name: Render Video
+        run: |
+          # We'll use the existing render script in the repo. 
+          # If it's named differently, I'll adjust, but I'll try to trigger 
+          # the main render entry point.
+          python render_video.py || python main.py --render
+
+      - name: Upload Rendered Video
+        uses: actions/upload-artifact@v4
+        with:
+          name: rendered-video
+          path: ./*.mp4
