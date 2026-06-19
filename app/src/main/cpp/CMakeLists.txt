@@ -11,10 +11,28 @@ project(CalAI_Native)
 # See cpp/cactus/CMakeLists.txt and cpp/cactus/build.sh for the host recipe.
 
 # Point to the pre-compiled libcactus.so. The prebuilt binary lives under
-# app/src/main/jniLibs/<abi>/, NOT under the cmake source dir. Compute the path
-# from the location of this CMakeLists.txt (CMAKE_CURRENT_SOURCE_DIR = app/src/main/cpp/)
-# so the link step finds the right file on every build host.
-set(CACTUS_LIB_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../../jniLibs/${CMAKE_ANDROID_SMI_ARCH}/libcactus.so)
+# app/src/main/jniLibs/<abi>/, NOT under the cmake source dir. This
+# CMakeLists.txt lives at app/src/main/cpp/CMakeLists.txt, so the path
+# from here to the prebuilt is "../jniLibs/<abi>/libcactus.so" — just one
+# level up, not two (the previous ../../ version resolved to app/jniLibs/
+# which doesn't exist).
+#
+# Use ANDROID_ABI rather than CMAKE_ANDROID_SMI_ARCH: ANDROID_ABI is the
+# stable, AGP-set value (e.g. "arm64-v8a"); CMAKE_ANDROID_SMI_ARCH is the
+# raw NDK toolchain value and is not always populated, which caused the
+# ninja build to look for "app/src/jniLibs/libcactus.so" with an empty
+# arch segment.
+set(CACTUS_LIB_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}/libcactus.so)
+
+# Defensive: if the prebuilt isn't at the expected location, print the
+# computed path so the build log shows the exact problem instead of just
+# "missing and no known rule to make it".
+if(NOT EXISTS "${CACTUS_LIB_PATH}")
+    message(FATAL_ERROR
+        "calai_jni: prebuilt libcactus.so not found at ${CACTUS_LIB_PATH}. "
+        "Expected layout: app/src/main/jniLibs/<abi>/libcactus.so. "
+        "ANDROID_ABI='${ANDROID_ABI}', CMAKE_CURRENT_SOURCE_DIR='${CMAKE_CURRENT_SOURCE_DIR}'.")
+endif()
 
 # If the above path is not ideal for CMake's specific structure, we explicitly define a pre-built library
 add_library(cactus SHARED IMPORTED)
