@@ -28,8 +28,4 @@ object CactusEngine {
         // For the 'cheap' solution, we route through the device's networked curl
         return "Search results for '$query': [Simulated local search result from Cactus-Curl library]"
     }
-
-    companion object {
-        private const val TAG = "CactusEngine"
-    }
 }

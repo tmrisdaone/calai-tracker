@@ -13,6 +13,14 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
+
+        // Only build for arm64-v8a: the prebuilt libcactus.so is only
+        // shipped for that ABI. Without this filter, AGP tries to build
+        // for armeabi-v7a / x86 / x86_64 too, and CMake aborts with
+        // "libcactus.so not found" for each.
+        ndk {
+            abiFilters += listOf("arm64-v8a")
+        }
     }
 
     buildTypes {
