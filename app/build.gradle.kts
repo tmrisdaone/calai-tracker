@@ -47,9 +47,10 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
-        jniLibs {
-            use.from("src/main/jniLibs")
-        }
+        // The jniLibs source set is auto-wired to src/main/jniLibs/<abi>/ by AGP,
+        // so we do NOT need (and AGP 8.x Kotlin DSL does not support)
+        // the legacy `jniLibs { use.from(...) }` block. The prebuilt
+        // app/src/main/jniLibs/arm64-v8a/libcactus.so is picked up automatically.
     }
 }
 
