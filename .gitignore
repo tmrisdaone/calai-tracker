@@ -20,3 +20,31 @@ gradle/wrapper/gradle-wrapper.jar
 
 # Logs
 *.log
+
+# CMake / native build artifacts (must never be committed)
+**/build/
+**/CMakeFiles/
+**/CMakeCache.txt
+**/cmake_install.cmake
+**/Makefile
+
+# Curl prebuilt libraries for non-Android platforms (Android uses android/arm64-v8a only)
+**/libs/curl/ios/
+**/libs/curl/macos/
+**/libs/curl/windows/
+
+# Stale workspace duplicate / dev sandbox
+workspace/
+
+# Kotlin
+.kotlin/
+
+# Java / Android profiling dumps
+*.hprof
+
+# Local-only Gradle config
+local.properties
+
+# AGP / Gradle native build scratch dirs
+.externalNativeBuild/
+.cxx/

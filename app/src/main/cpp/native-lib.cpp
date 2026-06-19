@@ -8,7 +8,7 @@
 
 extern "C"
 JNIEXPORT jstring JNICALL
-Java_com_calai_tracker_CactusBridge_nativeInit(J boulder, jobject thiz, jstring model_path) {
+Java_com_calai_tracker_CactusBridge_nativeInit(JNIEnv *env, jobject thiz, jstring model_path) {
     const char *path = env->GetStringUTFChars(model_path, 0);
     LOGI("Initializing Cactus with model path: %s", path);
     

@@ -26,7 +26,37 @@ To use the local AI engine:
 3. The app will automatically route analysis requests to the local engine.
 
 ## 🛠 Build Instructions
-Due to the complexity of the native ARM64 build, it is recommended to build the APK using Android Studio on a PC:
+
+The native build links against the pre-compiled `libcactus.so` shipped under
+`app/src/main/jniLibs/arm64-v8a/`, so the Android build no longer compiles the
+Cactus source tree itself. That means a headless Gradle build works as long as
+you have the Android NDK installed (r25c or newer) — no need to run
+`cpp/cactus/build.sh`.
+
+### Option A — Android Studio (easiest)
 1. Clone the repo.
 2. Open in Android Studio (Ladybug or newer).
-3. Build $\rightarrow$ Build Bundle(s) / APK(s) $\rightarrow$ Build APK(s).
+3. Build → Build Bundle(s) / APK(s) → Build APK(s).
+
+### Option B — Headless Gradle (Linux / macOS / WSL2 with full NDK)
+```bash
+# One-time: install the Android command-line tools and NDK r25c+, then
+# export ANDROID_HOME (or ANDROID_SDK_ROOT) and ANDROID_NDK_HOME.
+git clone https://github.com/tmrisdaone/calai-tracker.git
+cd calai-tracker
+./gradlew assembleDebug
+# APK at: app/build/outputs/apk/debug/app-debug.apk
+```
+
+### Regenerating `libcactus.so` from source (advanced)
+Only needed if you change the Cactus engine itself. Requires a non-Android
+host with cmake + clang/g++.
+```bash
+cd app/src/main/cpp/cactus
+./build.sh   # produces libcactus.a; rebuild the Android JNI shim and re-stage
+             # the .so into src/main/jniLibs/arm64-v8a/libcactus.so
+```
+
+> Note: A full native build does **not** work in Termux. The NDK toolchain it
+> ships is incomplete (missing `lld`, sysroot pieces, etc.), so use a Linux
+> machine, WSL2, macOS, or Android Studio.
